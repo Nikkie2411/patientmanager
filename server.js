@@ -22,6 +22,7 @@ app.post('/api/auth/check', async (req, res) => {
         if (user) res.json(user);
         else res.status(401).json({ error: 'Invalid credentials' });
     } catch (error) {
+        console.error('Auth Check Error:', error);
         res.status(500).json({ error: error.message });
     }
 });
