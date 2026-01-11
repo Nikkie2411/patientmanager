@@ -1,6 +1,7 @@
 const sheetsService = require('./sheets');
 const guidelineService = require('./guidelines');
 const { sendAlertEmail } = require('../lib/email');
+const { createAlertEmailHTML } = require('../lib/emailTemplate');
 
 class AlertService {
     async runDailyProcess() {
