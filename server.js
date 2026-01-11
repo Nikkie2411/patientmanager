@@ -113,8 +113,10 @@ app.get('/api/patients/:id/antibiotics', async (req, res) => {
 
 app.post('/api/antibiotics', async (req, res) => {
     try {
+        console.log('[POST /api/antibiotics] Received:', { drug: req.body.drug_name, hasAlert: req.body.hasAlert });
         await sheetsService.addAntibiotic(req.body);
         if (req.body.hasAlert) {
+            console.log('[POST /api/antibiotics] Triggering manual alert email...');
             // Async send manual alert email
             alertService.sendManualEntryAlert(
                 req.body.patient_id,
@@ -122,7 +124,9 @@ app.post('/api/antibiotics', async (req, res) => {
                 req.body.dose,
                 req.body.frequency,
                 req.body.isCriticallyIll
-            ).catch(err => console.error("Manual alert send error:", err));
+            ).catch(err => console.error("[POST /api/antibiotics] Manual alert send error:", err));
+        } else {
+            console.log('[POST /api/antibiotics] No alert flag set');
         }
         res.json({ success: true });
     } catch (error) {
@@ -132,8 +136,10 @@ app.post('/api/antibiotics', async (req, res) => {
 
 app.put('/api/antibiotics/:index', async (req, res) => {
     try {
+        console.log('[PUT /api/antibiotics] Received:', { drug: req.body.drug_name, hasAlert: req.body.hasAlert });
         await sheetsService.updateAntibiotic(Number(req.params.index), req.body);
         if (req.body.hasAlert) {
+            console.log('[PUT /api/antibiotics] Triggering manual alert email...');
             // Async send manual alert email on edit
             alertService.sendManualEntryAlert(
                 req.body.patient_id,
@@ -141,7 +147,9 @@ app.put('/api/antibiotics/:index', async (req, res) => {
                 req.body.dose,
                 req.body.frequency,
                 req.body.isCriticallyIll
-            ).catch(err => console.error("Manual alert send error:", err));
+            ).catch(err => console.error("[PUT /api/antibiotics] Manual alert send error:", err));
+        } else {
+            console.log('[PUT /api/antibiotics] No alert flag set');
         }
         res.json({ success: true });
     } catch (error) {
@@ -217,6 +225,22 @@ app.post('/api/validate-dosage', async (req, res) => {
         const validation = guidelineService.checkGuidelineCompliance(antibiotic, recommendation, currentLog.weight);
         res.json({ ...validation, recommendation });
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+// Test Email Endpoint
+app.post('/api/test-email', async (req, res) => {
+    try {
+        const testEmail = req.body.email || 'test@example.com';
+        console.log('[TEST EMAIL] Attempting to send test email to:', testEmail);
+        const { sendAlertEmail } = require('./lib/email');
+        await sendAlertEmail(testEmail, '[TEST] Email hoạt động', 'Đây là email test từ hệ thống Patient Manager.');
+        console.log('[TEST EMAIL] Success');
+        res.json({ success: true, message: 'Email sent successfully' });
+    } catch (error) {
+        console.error('[TEST EMAIL] Failed:', error);
         res.status(500).json({ error: error.message });
     }
 });

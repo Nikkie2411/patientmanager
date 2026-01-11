@@ -75,21 +75,35 @@ class AlertService {
     }
 
     async sendManualEntryAlert(patientId, drugName, dose, frequency, isCriticallyIll) {
+        console.log('[sendManualEntryAlert] STARTED for patient:', patientId, 'drug:', drugName);
         try {
             const patients = await sheetsService.getPatients();
             const patient = patients.find(p => p.id === patientId);
-            if (!patient) return;
+            if (!patient) {
+                console.log('[sendManualEntryAlert] ERROR: Patient not found');
+                return;
+            }
+            console.log('[sendManualEntryAlert] Patient found:', patient.full_name, 'Department:', patient.department);
 
             const dept = patient.department || 'Unknown';
             const logs = await sheetsService.getDailyLogs(patientId);
             logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             const currentLog = logs[0];
+            console.log('[sendManualEntryAlert] Latest weight:', currentLog?.weight, 'kg');
 
             const recommendation = await guidelineService.getRecommendedDosage(drugName, patient, currentLog, isCriticallyIll ? 'TRUE' : 'FALSE');
-            if (!recommendation) return;
+            if (!recommendation) {
+                console.log('[sendManualEntryAlert] No recommendation found for:', drugName);
+                return;
+            }
+            console.log('[sendManualEntryAlert] Recommendation:', recommendation);
 
             const compliance = guidelineService.checkGuidelineCompliance({ dose, frequency }, recommendation, currentLog?.weight);
-            if (compliance.isCompliant) return;
+            console.log('[sendManualEntryAlert] Compliance check:', compliance);
+            if (compliance.isCompliant) {
+                console.log('[sendManualEntryAlert] Compliant - No alert needed');
+                return;
+            }
 
             const content = `⚠️ CẢNH BÁO LIỀU LƯỢNG KHÁNG SINH (NHẬP THỦ CÔNG)\n` +
                 `---------------------------------\n` +
@@ -105,13 +119,23 @@ class AlertService {
                 `---------------------------------\n`;
 
             const allAccounts = await sheetsService.getAccounts();
+            console.log('[sendManualEntryAlert] Total accounts:', allAccounts.length);
             const deptAccounts = allAccounts.filter(a => a.department?.toLowerCase() === dept.toLowerCase());
+            console.log('[sendManualEntryAlert] Accounts in department', dept, ':', deptAccounts.length);
             const emails = Array.from(new Set(deptAccounts.flatMap(a => a.emails)));
+            console.log('[sendManualEntryAlert] Target emails:', emails);
+
+            if (emails.length === 0) {
+                console.log('[sendManualEntryAlert] WARNING: No emails found for department:', dept);
+            }
+
             for (const email of emails) {
+                console.log('[sendManualEntryAlert] Sending to:', email);
                 await sendAlertEmail(email, `[Khẩn cấp] Cảnh báo liều kháng sinh - Khoa ${dept}`, content);
             }
+            console.log('[sendManualEntryAlert] COMPLETED');
         } catch (error) {
-            console.error("Failed to send manual alert:", error);
+            console.error("[sendManualEntryAlert] FAILED:", error);
         }
     }
 }
