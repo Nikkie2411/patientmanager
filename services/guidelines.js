@@ -104,7 +104,7 @@ class GuidelineService {
         const freqMax = freqParts.length > 1 ? parseInt(freqParts[1]) : freqMin;
 
         const isFreqWrong = currentFreq < Math.min(freqMin, freqMax) || currentFreq > Math.max(freqMin, freqMax);
-        if (isFreqWrong && currentFreq !== 0) {
+        if (isFreqWrong || currentFreq === 0) {
             return { isCompliant: false, message: `Tần suất không hợp lệ. Khuyến cáo: mỗi ${recFreqStr} giờ.` };
         }
 
