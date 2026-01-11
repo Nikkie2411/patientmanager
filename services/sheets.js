@@ -291,6 +291,18 @@ class GoogleSheetService {
         return Array.from(accountsMap.values());
     }
 
+    async addAccount(account) {
+        const sheets = await getGoogleSheetsClient();
+        await sheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: 'Accounts!A:D',
+            valueInputOption: 'USER_ENTERED',
+            requestBody: {
+                values: [[account.username, account.password, account.department, account.emails[0] || '']],
+            },
+        });
+    }
+
     async checkAccountCredentials(username, password) {
         const sheets = await getGoogleSheetsClient();
         const response = await sheets.spreadsheets.values.get({

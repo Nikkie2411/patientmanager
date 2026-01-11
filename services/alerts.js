@@ -73,6 +73,49 @@ class AlertService {
         }
         return summary;
     }
+
+    async sendManualEntryAlert(patientId, drugName, dose, frequency, isCriticallyIll) {
+        try {
+            const patients = await sheetsService.getPatients();
+            const patient = patients.find(p => p.id === patientId);
+            if (!patient) return;
+
+            const dept = patient.department || 'Unknown';
+            const logs = await sheetsService.getDailyLogs(patientId);
+            logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const currentLog = logs[0];
+
+            const recommendation = await guidelineService.getRecommendedDosage(drugName, patient, currentLog, isCriticallyIll ? 'TRUE' : 'FALSE');
+            if (!recommendation) return;
+
+            const compliance = guidelineService.checkGuidelineCompliance({ dose, frequency }, recommendation, currentLog?.weight);
+            if (compliance.isCompliant) return;
+
+            const content = `⚠️ CẢNH BÁO LIỀU LƯỢNG KHÁNG SINH (NHẬP THỦ CÔNG)\n` +
+                `---------------------------------\n` +
+                `Bệnh nhân: ${patient.full_name}\n` +
+                `Mã BN: ${patient.id}\n` +
+                `Khoa: ${dept}\n\n` +
+                `THÔNG TIN KHÁNG SINH CẦN ĐIỀU CHỈNH:\n` +
+                `- Tên thuốc: ${drugName}${isCriticallyIll ? ' (Nhiễm khuẩn nặng)' : ''}\n` +
+                `- Liều nhập vào: ${dose}\n` +
+                `- Tần suất nhập vào: ${frequency}\n` +
+                `- Khuyến cáo: ${recommendation.dose} x ${currentLog?.weight}kg mỗi ${recommendation.frequency} giờ\n` +
+                `- Ghi chú: ${compliance.message}\n` +
+                `---------------------------------\n`;
+
+            const allAccounts = await sheetsService.getAccounts();
+            const deptAccounts = allAccounts.filter(a => a.department?.toLowerCase() === dept.toLowerCase());
+            const emails = Array.from(new Set(deptAccounts.flatMap(a => a.emails)));
+
+            for (const email of emails) {
+                await sendAlertEmail(email, `[Khẩn cấp] Cảnh báo liều kháng sinh - Khoa ${dept}`, content);
+            }
+            console.log(`Manual alert sent for ${patientId} to ${emails.length} recipients`);
+        } catch (error) {
+            console.error("Failed to send manual alert:", error);
+        }
+    }
 }
 
 module.exports = new AlertService();

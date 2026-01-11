@@ -75,21 +75,39 @@ class GuidelineService {
         const recDoseStr = recommendation.dose;
         const currentDose = parseFloat(antibiotic.dose);
         const doseParts = recDoseStr.match(/(\d+(\.\d+)?)/g);
-        if (!doseParts || !weight) return { isCompliant: true };
+
+        // Extract frequency number from antibiotic.frequency (e.g. "12 giờ" -> 12, "24" -> 24)
+        let freqStr = antibiotic.frequency?.toString() || '';
+        const currentFreq = parseInt(freqStr.match(/\d+/)?.[0] || '0');
+
+        const recFreqStr = recommendation.frequency?.toString() || '';
+        const freqParts = recFreqStr.match(/\d+/g);
+
+        if (!doseParts || !weight || !freqParts) return { isCompliant: true };
 
         const doseMin = parseFloat(doseParts[0]);
         const doseMax = doseParts.length > 1 ? parseFloat(doseParts[1]) : doseMin;
         const targetDoseMin = doseMin * weight;
         const targetDoseMax = doseMax * weight;
-        const tolerance = 0.15;
+        const tolerance = 0.10; // Tightened from 0.15 to 0.10
 
         const isTooLow = currentDose < targetDoseMin * (1 - tolerance);
         const isTooHigh = currentDose > targetDoseMax * (1 + tolerance);
 
         if (isTooLow || isTooHigh) {
             const recRange = targetDoseMin === targetDoseMax ? `${targetDoseMin.toFixed(1)} mg` : `${targetDoseMin.toFixed(1)} - ${targetDoseMax.toFixed(1)} mg`;
-            return { isCompliant: false, message: `Liều không hợp lệ. Khuyến cáo: ${recRange} (${recommendation.dose} * ${weight}kg).` };
+            return { isCompliant: false, message: `Liều không hợp lệ (+/- 10%). Khuyến cáo: ${recRange} (${recommendation.dose} * ${weight}kg).` };
         }
+
+        // 2. Frequency Validation (Strict)
+        const freqMin = parseInt(freqParts[0]);
+        const freqMax = freqParts.length > 1 ? parseInt(freqParts[1]) : freqMin;
+
+        const isFreqWrong = currentFreq < Math.min(freqMin, freqMax) || currentFreq > Math.max(freqMin, freqMax);
+        if (isFreqWrong && currentFreq !== 0) {
+            return { isCompliant: false, message: `Tần suất không hợp lệ. Khuyến cáo: mỗi ${recFreqStr} giờ.` };
+        }
+
         return { isCompliant: true };
     }
 

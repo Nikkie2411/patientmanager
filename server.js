@@ -114,6 +114,16 @@ app.get('/api/patients/:id/antibiotics', async (req, res) => {
 app.post('/api/antibiotics', async (req, res) => {
     try {
         await sheetsService.addAntibiotic(req.body);
+        if (req.body.hasAlert) {
+            // Async send manual alert email
+            alertService.sendManualEntryAlert(
+                req.body.patient_id,
+                req.body.drug_name,
+                req.body.dose,
+                req.body.frequency,
+                req.body.isCriticallyIll
+            ).catch(err => console.error("Manual alert send error:", err));
+        }
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -123,6 +133,16 @@ app.post('/api/antibiotics', async (req, res) => {
 app.put('/api/antibiotics/:index', async (req, res) => {
     try {
         await sheetsService.updateAntibiotic(Number(req.params.index), req.body);
+        if (req.body.hasAlert) {
+            // Async send manual alert email on edit
+            alertService.sendManualEntryAlert(
+                req.body.patient_id,
+                req.body.drug_name,
+                req.body.dose,
+                req.body.frequency,
+                req.body.isCriticallyIll
+            ).catch(err => console.error("Manual alert send error:", err));
+        }
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
