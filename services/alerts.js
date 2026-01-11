@@ -107,11 +107,9 @@ class AlertService {
             const allAccounts = await sheetsService.getAccounts();
             const deptAccounts = allAccounts.filter(a => a.department?.toLowerCase() === dept.toLowerCase());
             const emails = Array.from(new Set(deptAccounts.flatMap(a => a.emails)));
-
             for (const email of emails) {
                 await sendAlertEmail(email, `[Khẩn cấp] Cảnh báo liều kháng sinh - Khoa ${dept}`, content);
             }
-            console.log(`Manual alert sent for ${patientId} to ${emails.length} recipients`);
         } catch (error) {
             console.error("Failed to send manual alert:", error);
         }
