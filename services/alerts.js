@@ -132,7 +132,7 @@ class AlertService {
 
             for (const email of emails) {
                 console.log('[sendManualEntryAlert] Sending to:', email);
-                await sendAlertEmail(email, `[Khẩn cấp] Cảnh báo liều kháng sinh - Khoa ${dept}`, content);
+                await sendAlertEmail(email, `⚠️ Cảnh báo liều kháng sinh - ${patient.full_name} - Khoa ${dept}`, null, emailHTML);
             }
             console.log('[sendManualEntryAlert] COMPLETED');
         } catch (error) {
